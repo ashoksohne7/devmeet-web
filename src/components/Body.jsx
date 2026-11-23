@@ -4,12 +4,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { api } from "../utils/api";
 import { addUser } from "../utils/userSlice";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 
 export default function Body() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useSelector((s) => s.user);
+  const isLogin = location.pathname === "/login";
 
   useEffect(() => {
     if (user) return;
@@ -21,10 +23,25 @@ export default function Body() {
       });
   }, []);
 
+  if (isLogin) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" }}
+      >
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-base-200">
+    <div className="flex min-h-screen flex-col bg-base-200">
       <Navbar />
-      <Outlet />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <Footer />
+      <div className="h-16 md:hidden" />
     </div>
   );
 }

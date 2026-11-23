@@ -1,2 +1,56 @@
 @import "tailwindcss";
 @plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: "devmeet";
+  default: true;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f4f5f7;
+  --color-base-300: #e4e6eb;
+  --color-base-content: #21262e;
+  --color-primary: #fd267a;
+  --color-primary-content: #ffffff;
+  --color-secondary: #ff6036;
+  --color-secondary-content: #ffffff;
+  --color-accent: #21d07a;
+  --color-accent-content: #ffffff;
+  --color-neutral: #21262e;
+  --color-neutral-content: #ffffff;
+  --color-info: #3b9cff;
+  --color-info-content: #ffffff;
+  --color-success: #21d07a;
+  --color-success-content: #ffffff;
+  --color-warning: #ffb020;
+  --color-warning-content: #21262e;
+  --color-error: #ff4458;
+  --color-error-content: #ffffff;
+  --radius-selector: 1rem;
+  --radius-field: 0.9rem;
+  --radius-box: 1.25rem;
+}
+
+.brand-text {
+  background-image: linear-gradient(135deg, #fd267a, #ff6036);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.btn-primary {
+  background-image: linear-gradient(135deg, #fd267a, #ff6036);
+  border: none;
+  color: #fff;
+}
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
+}
+@keyframes pop-in {
+  0%   { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes sheet-up {
+  0%   { transform: translateY(60px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
