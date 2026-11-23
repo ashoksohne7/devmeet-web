@@ -3,6 +3,7 @@ import userReducer from "./userSlice";
 import feedReducer from "./feedSlice";
 import connectionsReducer from "./connectionsSlice";
 import requestsReducer from "./requestsSlice";
+import toastReducer from "./toastSlice";
 
 export default configureStore({
   reducer: {
@@ -10,5 +11,6 @@ export default configureStore({
     feed: feedReducer,
     connections: connectionsReducer,
     requests: requestsReducer,
+    toast: toastReducer,
   },
 });

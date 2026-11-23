@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { api, getError } from "../utils/api";
 import { addUser } from "../utils/userSlice";
 import SwipeCard from "./SwipeCard";
+import { resizeImage } from "../utils/resizeImage";
 
 export default function Profile() {
   const user = useSelector((s) => s.user);
@@ -31,6 +32,18 @@ export default function Profile() {
   const onChange = (e) => {
     setSaved(false);
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const onPick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImage(file, 400, 0.72);
+      setSaved(false);
+      setForm((f) => ({ ...f, photoUrl: dataUrl }));
+    } catch {
+      setError("Photo load nahi hui, dusri try karo");
+    }
   };
 
   const skillsArr = form.skills.split(",").map((s) => s.trim()).filter(Boolean);
@@ -92,8 +105,12 @@ export default function Profile() {
             <option value="female">Female</option>
             <option value="other">Other</option>
           </select>
+          <label className="btn btn-outline btn-sm w-fit">
+            📷 Gallery se photo chuno
+            <input type="file" accept="image/*" className="hidden" onChange={onPick} />
+          </label>
           <input name="photoUrl" placeholder="Photo URL" className="input input-bordered w-full"
-            value={form.photoUrl} onChange={onChange} />
+            value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl} onChange={onChange} />
           <textarea name="about" placeholder="About you" className="textarea textarea-bordered w-full"
             value={form.about} onChange={onChange} />
           <input name="skills" placeholder="Skills (comma se alag: react, node, mongodb)"

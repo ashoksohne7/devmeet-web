@@ -5,6 +5,7 @@ import { api } from "../utils/api";
 import { addUser } from "../utils/userSlice";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import Toast from "./Toast";
 
 export default function Body() {
   const dispatch = useDispatch();
@@ -41,6 +42,7 @@ export default function Body() {
         <Outlet />
       </main>
       <Footer />
+      <Toast />
       <div className="h-16 md:hidden" />
     </div>
   );

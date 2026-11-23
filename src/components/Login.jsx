@@ -64,7 +64,7 @@ export default function Login() {
           {error && <p className="text-error text-sm">{error}</p>}
 
           <button className="btn btn-primary rounded-full" onClick={submit} disabled={loading}>
-            {loading ? "Please wait..." : isLogin ? "Login" : "Sign Up"}
+            {loading ? "Please wait (pehli baar 40 sec lag sakte hain)" : isLogin ? "Login" : "Sign Up"}
           </button>
 
           <p
