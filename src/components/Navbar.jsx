@@ -22,13 +22,19 @@ export default function Navbar() {
   const navigate = useNavigate();
   const count = requests?.length || 0;
 
+  // keep the Requests badge fresh (every 60s, only while the tab is visible)
   useEffect(() => {
-    if (user && requests === null) {
+    if (!user) return;
+    const load = () => {
+      if (document.hidden) return;
       api
         .get("/user/requests/recevied")
         .then((res) => dispatch(addRequests(res.data.data)))
         .catch(() => {});
-    }
+    };
+    load();
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
   }, [user]);
 
   const logout = async () => {
