@@ -48,7 +48,7 @@ export default function Requests() {
       {requests && requests.length === 0 && (
         <div className="py-16 text-center opacity-70">
           <p className="text-4xl">💌</p>
-          <p className="mt-2">Abhi koi pending request nahi hai.</p>
+          <p className="mt-2">No pending requests right now.</p>
         </div>
       )}
 

@@ -37,7 +37,7 @@ export default function MatchModal({ me, other, onKeep, onView }) {
           It&apos;s a match!
         </h2>
         <p className="mt-2 text-white/70">
-          Tum aur {other?.firstName} ab connected ho
+          You and {other?.firstName} are now connected
         </p>
 
         <div className="my-8 flex items-center justify-center">
@@ -51,10 +51,10 @@ export default function MatchModal({ me, other, onKeep, onView }) {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button className="btn btn-primary" onClick={onView}>
-            Connections dekho
+            View connections
           </button>
           <button className="btn btn-ghost text-white" onClick={onKeep}>
-            Swipe karte raho
+            Keep swiping
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import PhotoFill from "./PhotoFill";
 
 const THRESHOLD = 110;
 
@@ -11,17 +12,19 @@ export default function SwipeCard({
   mySkills = [],
   preview = false,
 }) {
-  const { firstName = "", lastName = "", age, gender, about, skills = [], photoUrl } = user;
+  const { firstName = "", lastName = "", age, gender, about, skills = [] } = user;
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
   const start = useRef(null);
   const isTop = depth === 0;
   const interactive = isTop && !preview;
 
-  const initials = `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase();
-  const hue = [...`${firstName}${lastName}`].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
-
   const mine = new Set((mySkills || []).map((s) => s.toLowerCase()));
   const common = skills.filter((s) => mine.has(s.toLowerCase()));
+
+  // if a swipe fails and the card comes back, reset its position
+  useEffect(() => {
+    if (!leaving) setDrag({ x: 0, y: 0, active: false });
+  }, [leaving]);
 
   const onDown = (e) => {
     if (!interactive || leaving) return;
@@ -38,7 +41,7 @@ export default function SwipeCard({
     start.current = null;
     if (Math.hypot(drag.x, drag.y) < 8) {
       setDrag({ x: 0, y: 0, active: false });
-      onTap(); // sirf tap hua, drag nahi
+      onTap();
       return;
     }
     if (Math.abs(drag.x) > THRESHOLD) {
@@ -85,18 +88,7 @@ export default function SwipeCard({
         cursor: interactive ? (drag.active ? "grabbing" : "pointer") : "default",
       }}
     >
-      {photoUrl ? (
-        <img src={photoUrl} alt={firstName} draggable={false} className="h-full w-full object-cover" />
-      ) : (
-        <div
-          className="flex h-full w-full items-center justify-center text-8xl font-bold text-white/80"
-          style={{
-            background: `linear-gradient(160deg, hsl(${hue} 70% 45%), hsl(${(hue + 60) % 360} 70% 28%))`,
-          }}
-        >
-          {initials || "?"}
-        </div>
-      )}
+      <PhotoFill user={user} />
 
       {!preview && (
         <>
@@ -121,15 +113,15 @@ export default function SwipeCard({
             className="mb-2 inline-block rounded-full px-3 py-1 text-xs font-semibold"
             style={{ backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" }}
           >
-            🤝 {common.length} skill{common.length > 1 ? "s" : ""} common
+            🤝 {common.length} shared skill{common.length > 1 ? "s" : ""}
           </span>
         )}
-        <h2 className="text-3xl font-bold leading-tight">
-          {firstName || "Naam"} {lastName}
+        <h2 className="break-words text-3xl font-bold leading-tight">
+          {firstName || "Your name"} {lastName}
           {age ? <span className="ml-2 text-2xl font-normal">{age}</span> : null}
         </h2>
         {gender && <p className="text-sm capitalize text-white/70">{gender}</p>}
-        {about && <p className="mt-2 line-clamp-2 text-sm text-white/90">{about}</p>}
+        {about && <p className="mt-2 line-clamp-2 break-words text-sm text-white/90">{about}</p>}
         {skills.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {skills.slice(0, 5).map((s) => (
@@ -148,7 +140,7 @@ export default function SwipeCard({
 
       {interactive && (
         <button
-          aria-label="Poori details"
+          aria-label="View full profile"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={onTap}
           className="absolute bottom-5 right-5 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 text-xl text-white backdrop-blur hover:bg-white/20"

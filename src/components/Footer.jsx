@@ -9,7 +9,7 @@ export default function Footer() {
             🔥 <span className="brand-text">devmeet</span>
           </p>
           <p className="mt-1 text-sm text-base-content/60">
-            Developers ke liye, developers se milne ki jagah.
+            Where developers meet developers.
           </p>
         </div>
         <nav className="flex flex-wrap justify-center gap-5 text-sm text-base-content/70">
@@ -20,7 +20,7 @@ export default function Footer() {
         </nav>
       </div>
       <p className="mt-6 text-center text-xs text-base-content/50">
-        © {new Date().getFullYear()} DevMeet. Made with ❤️ and a lot of chai.
+        © {new Date().getFullYear()} DevMeet. All rights reserved.
       </p>
     </footer>
   );

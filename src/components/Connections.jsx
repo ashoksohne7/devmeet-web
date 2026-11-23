@@ -29,7 +29,7 @@ export default function Connections() {
       {connections && connections.length === 0 && (
         <div className="py-16 text-center opacity-70">
           <p className="text-4xl">🤝</p>
-          <p className="mt-2">Abhi koi connection nahi. Feed me developers ko swipe right karo.</p>
+          <p className="mt-2">No connections yet. Swipe right on developers in your feed to get started.</p>
         </div>
       )}
 

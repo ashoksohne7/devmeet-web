@@ -14,6 +14,7 @@ export default function Feed() {
   const [showDetail, setShowDetail] = useState(false);
 
   const loadFeed = async () => {
+    setError("");
     try {
       const res = await api.get("/feed?page=1&limit=10");
       dispatch(addFeed(res.data));
@@ -36,8 +37,15 @@ export default function Feed() {
         const status = dir === "right" ? "interested" : "ignored";
         await api.post(`/request/send/${status}/${target._id}`);
       } catch (err) {
-        setError(getError(err));
+        const msg = getError(err);
+        // already handled earlier: just drop the card. Anything else: keep it.
+        if (!/already exists/i.test(msg)) {
+          setError(msg);
+          setLeaving(null);
+          return;
+        }
       }
+      setError("");
       dispatch(removeFromFeed(target._id));
       setLeaving(null);
       if (isLast) loadFeed();
@@ -68,6 +76,11 @@ export default function Feed() {
       {error && (
         <div role="alert" className="alert alert-error w-full max-w-sm py-2 text-sm text-white">
           <span>{error}</span>
+          {!feed && (
+            <button className="btn btn-sm btn-ghost" onClick={loadFeed}>
+              Retry
+            </button>
+          )}
         </div>
       )}
 
@@ -75,10 +88,11 @@ export default function Feed() {
 
       {feed && feed.length === 0 && (
         <div className="mt-16 text-center">
-          <p className="text-5xl">🎉</p>
-          <p className="mt-3 text-lg font-semibold">Tumne sabko dekh liya!</p>
-          <p className="text-sm opacity-60">Naye developers aate hi yahan dikhenge.</p>
-          <button className="btn btn-primary mt-5" onClick={loadFeed}>
+          <p className="text-lg font-semibold">You are all caught up</p>
+          <p className="mt-1 text-sm opacity-60">
+            There are no more developers to show right now. Check back soon.
+          </p>
+          <button className="btn btn-primary mt-5 rounded-full" onClick={loadFeed}>
             Refresh
           </button>
         </div>
@@ -102,14 +116,14 @@ export default function Feed() {
 
           <div className="flex items-center gap-8">
             <button
-              aria-label="Ignore"
+              aria-label="Pass"
               className="btn btn-circle btn-lg h-16 w-16 border-0 bg-white text-2xl text-rose-500 shadow-lg hover:scale-110 hover:bg-white"
               onClick={() => swipe("left")}
             >
               ✕
             </button>
             <button
-              aria-label="Interested"
+              aria-label="Like"
               className="btn btn-circle btn-lg h-16 w-16 border-0 bg-white text-2xl text-emerald-500 shadow-lg hover:scale-110 hover:bg-white"
               onClick={() => swipe("right")}
             >
@@ -117,7 +131,7 @@ export default function Feed() {
             </button>
           </div>
           <p className="text-xs opacity-50">
-            Card pe tap karo = poori details · drag ya ← → = swipe
+            Tap a card for details · Drag or use the ← → keys to swipe
           </p>
         </>
       )}
