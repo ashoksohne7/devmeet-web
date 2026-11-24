@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { api, getError } from "../utils/api";
 import { addUser } from "../utils/userSlice";
 import { resizeImage } from "../utils/resizeImage";
+import { uploadAvatar } from "../utils/cloudinary";
 import SwipeCard from "./SwipeCard";
 
 const MAX_FILE = 5 * 1024 * 1024;
@@ -50,14 +51,6 @@ const validate = (n) => {
   if (n.about.length > ABOUT_MAX) return `About must be ${ABOUT_MAX} characters or fewer.`;
   if (n.skills.length > MAX_SKILLS) return `You can add up to ${MAX_SKILLS} skills.`;
   if (n.skills.some((s) => s.length > 30)) return "Each skill must be 30 characters or fewer.";
-  if (n.photoUrl && !n.photoUrl.startsWith("data:image/")) {
-    try {
-      const u = new URL(n.photoUrl);
-      if (!/^https?:$/.test(u.protocol)) throw new Error("bad protocol");
-    } catch {
-      return "Enter a valid photo URL that starts with http:// or https://";
-    }
-  }
   return "";
 };
 
@@ -75,6 +68,7 @@ export default function Profile() {
   const [form, setForm] = useState(fromUser(null));
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (user) setForm(fromUser(user));
@@ -95,13 +89,17 @@ export default function Profile() {
     if (!file) return;
     if (!file.type.startsWith("image/")) return setError("Please choose an image file.");
     if (file.size > MAX_FILE) return setError("That image is too large. Choose one under 5 MB.");
+
+    setError("");
+    setUploading(true);
     try {
-      const dataUrl = await resizeImage(file, 400, 0.72);
-      if (dataUrl.length > 600000) return setError("The image is still too large after processing. Try a smaller one.");
-      setError("");
-      setForm((f) => ({ ...f, photoUrl: dataUrl }));
+      const small = await resizeImage(file, 1000, 0.85);
+      const url = await uploadAvatar(small);
+      setForm((f) => ({ ...f, photoUrl: url }));
     } catch {
-      setError("Could not read that image. Try a different file.");
+      setError("Photo upload failed. Check your connection and try again.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -118,8 +116,9 @@ export default function Profile() {
         lastName: n.lastName,
         about: n.about,
         skills: n.skills,
-        photoUrl: n.photoUrl,
       };
+      // only send the photo when it changed (old accounts may hold a large legacy image)
+      if (n.photoUrl !== (user.photoUrl || "")) body.photoUrl = n.photoUrl;
       if (n.age !== "") body.age = n.age;
       if (n.gender) body.gender = n.gender;
 
@@ -167,22 +166,20 @@ export default function Profile() {
             </Field>
           </div>
 
-          <Field label="Photo">
+          <Field label="Photo" hint="JPG, PNG or WebP, up to 5 MB">
             <div className="flex flex-wrap items-center gap-2">
-              <label className="btn btn-outline btn-sm">
-                Upload from device
-                <input type="file" accept="image/*" className="hidden" onChange={onPick} />
+              <label className={`btn btn-outline btn-sm ${uploading ? "btn-disabled" : ""}`}>
+                {uploading ? "Uploading…" : "Upload from device"}
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={onPick} disabled={uploading} />
               </label>
-              {form.photoUrl && (
+              {form.photoUrl && !uploading && (
                 <button type="button" className="btn btn-ghost btn-sm"
                   onClick={() => setForm((f) => ({ ...f, photoUrl: "" }))}>
                   Remove photo
                 </button>
               )}
             </div>
-            <input name="photoUrl" placeholder="Or paste an image URL"
-              className="input input-bordered mt-2 w-full"
-              value={form.photoUrl.startsWith("data:") ? "" : form.photoUrl} onChange={onChange} />
           </Field>
 
           <Field label="About" hint={`${form.about.length}/${ABOUT_MAX}`}>
@@ -198,7 +195,8 @@ export default function Profile() {
 
           {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
-          <button className="btn btn-primary rounded-full" onClick={save} disabled={loading || !dirty}>
+          <button className="btn btn-primary rounded-full" onClick={save}
+            disabled={loading || uploading || !dirty}>
             {loading ? "Saving…" : "Save changes"}
           </button>
         </div>
