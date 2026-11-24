@@ -52,17 +52,17 @@ export default function Login() {
     setLoading(true);
     const emailId = form.emailId.trim().toLowerCase();
     try {
-      if (!isLogin) {
-        await api.post("/signup", {
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          emailId,
-          password: form.password,
-        });
-      }
-      await api.post("/login", { emailId, password: form.password });
-      const res = await api.get("/profile/view");
-      dispatch(addUser(res.data));
+      const res = isLogin
+        ? await api.post("/login", { emailId, password: form.password })
+        : await api.post("/signup", {
+            firstName: form.firstName.trim(),
+            lastName: form.lastName.trim(),
+            emailId,
+            password: form.password,
+          });
+      // new backend returns the user directly; fall back to one extra call for the old one
+      const me = res.data?.data || (await api.get("/profile/view")).data;
+      dispatch(addUser(me));
       navigate("/");
     } catch (err) {
       setError(getError(err));

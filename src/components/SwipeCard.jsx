@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import PhotoFill from "./PhotoFill";
 
-const THRESHOLD = 110;
+const DISTANCE = 90;      // px drag needed to commit a swipe
+const FLICK_SPEED = 0.45; // px per ms
+const FLICK_MIN = 35;     // minimum px for a flick
+const TAP_SLOP = 6;       // movement under this counts as a tap
 
 export default function SwipeCard({
   user,
@@ -14,41 +17,70 @@ export default function SwipeCard({
 }) {
   const { firstName = "", lastName = "", age, gender, about, skills = [] } = user;
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
-  const start = useRef(null);
+  const gesture = useRef(null); // always holds the latest pointer data
   const isTop = depth === 0;
   const interactive = isTop && !preview;
 
   const mine = new Set((mySkills || []).map((s) => s.toLowerCase()));
   const common = skills.filter((s) => mine.has(s.toLowerCase()));
 
-  // if a swipe fails and the card comes back, reset its position
+  // if a swipe fails and the card comes back, reset it
   useEffect(() => {
-    if (!leaving) setDrag({ x: 0, y: 0, active: false });
+    if (!leaving) {
+      gesture.current = null;
+      setDrag({ x: 0, y: 0, active: false });
+    }
   }, [leaving]);
+
+  const reset = () => setDrag({ x: 0, y: 0, active: false });
 
   const onDown = (e) => {
     if (!interactive || leaving) return;
-    start.current = { x: e.clientX, y: e.clientY };
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    gesture.current = {
+      id: e.pointerId,
+      sx: e.clientX,
+      sy: e.clientY,
+      t: performance.now(),
+      dx: 0,
+      dy: 0,
+      moved: false,
+    };
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({ x: 0, y: 0, active: true });
   };
+
   const onMove = (e) => {
-    if (!start.current) return;
-    setDrag({ x: e.clientX - start.current.x, y: e.clientY - start.current.y, active: true });
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    g.dx = e.clientX - g.sx;
+    g.dy = e.clientY - g.sy;
+    if (!g.moved && Math.hypot(g.dx, g.dy) > TAP_SLOP) g.moved = true;
+    setDrag({ x: g.dx, y: g.dy, active: true });
   };
-  const onUp = () => {
-    if (!start.current) return;
-    start.current = null;
-    if (Math.hypot(drag.x, drag.y) < 8) {
-      setDrag({ x: 0, y: 0, active: false });
+
+  const finish = (e, cancelled) => {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    gesture.current = null;
+
+    if (cancelled) return reset();
+    if (!g.moved) {
+      reset();
       onTap();
       return;
     }
-    if (Math.abs(drag.x) > THRESHOLD) {
-      onSwipe(drag.x > 0 ? "right" : "left");
+
+    const dt = Math.max(performance.now() - g.t, 1);
+    const speed = Math.abs(g.dx) / dt;
+    const far = Math.abs(g.dx) > DISTANCE;
+    const flick = speed > FLICK_SPEED && Math.abs(g.dx) > FLICK_MIN;
+
+    if (far || flick) {
+      onSwipe(g.dx > 0 ? "right" : "left");
       setDrag((d) => ({ ...d, active: false }));
     } else {
-      setDrag({ x: 0, y: 0, active: false });
+      reset();
     }
   };
 
@@ -58,26 +90,28 @@ export default function SwipeCard({
   if (!preview) {
     if (isTop && leaving) {
       const s = leaving === "right" ? 1 : -1;
-      transform = `translate(${s * 700}px, ${drag.y * 0.3}px) rotate(${s * 30}deg)`;
+      const fly = Math.max(window.innerWidth, 700);
+      transform = `translate(${s * fly}px, ${drag.y * 0.3}px) rotate(${s * 28}deg)`;
       transition = "transform 300ms ease-out, opacity 300ms";
       opacity = 0;
     } else if (isTop) {
-      transform = `translate(${drag.x}px, ${drag.y * 0.3}px) rotate(${drag.x / 15}deg)`;
+      const rot = Math.max(-25, Math.min(25, drag.x / 15));
+      transform = `translate(${drag.x}px, ${drag.y * 0.3}px) rotate(${rot}deg)`;
       transition = drag.active ? "none" : "transform 250ms cubic-bezier(.2,.8,.2,1)";
     } else {
       transform = `translateY(${depth * 12}px) scale(${1 - depth * 0.05})`;
     }
   }
 
-  const likeOpacity = leaving === "right" ? 1 : Math.min(Math.max(drag.x / THRESHOLD, 0), 1);
-  const nopeOpacity = leaving === "left" ? 1 : Math.min(Math.max(-drag.x / THRESHOLD, 0), 1);
+  const likeOpacity = leaving === "right" ? 1 : Math.min(Math.max(drag.x / DISTANCE, 0), 1);
+  const nopeOpacity = leaving === "left" ? 1 : Math.min(Math.max(-drag.x / DISTANCE, 0), 1);
 
   return (
     <div
       onPointerDown={interactive ? onDown : undefined}
       onPointerMove={interactive ? onMove : undefined}
-      onPointerUp={interactive ? onUp : undefined}
-      onPointerCancel={interactive ? onUp : undefined}
+      onPointerUp={interactive ? (e) => finish(e, false) : undefined}
+      onPointerCancel={interactive ? (e) => finish(e, true) : undefined}
       className="absolute inset-0 select-none overflow-hidden rounded-3xl bg-base-300 shadow-2xl"
       style={{
         transform,
@@ -86,6 +120,7 @@ export default function SwipeCard({
         zIndex: 10 - depth,
         touchAction: interactive ? "none" : "auto",
         cursor: interactive ? (drag.active ? "grabbing" : "pointer") : "default",
+        willChange: interactive ? "transform" : "auto",
       }}
     >
       <PhotoFill user={user} />
