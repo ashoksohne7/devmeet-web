@@ -7,6 +7,7 @@ import Feed from "./components/Feed";
 import Connections from "./components/Connections";
 import Requests from "./components/Requests";
 import Profile from "./components/Profile";
+import Chat from "./components/Chat";
 import NotFound from "./components/NotFound";
 
 export default function App() {
@@ -20,6 +21,8 @@ export default function App() {
             <Route path="connections" element={<Connections />} />
             <Route path="requests" element={<Requests />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="chat/:userId" element={<Chat />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

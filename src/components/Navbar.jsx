@@ -11,6 +11,7 @@ import Avatar from "./Avatar";
 const LINKS = [
   { to: "/", label: "Feed", icon: "🔥", end: true },
   { to: "/requests", label: "Requests", icon: "💌" },
+  { to: "/chat", label: "Chat", icon: "💬" },
   { to: "/connections", label: "Connections", icon: "🤝" },
   { to: "/profile", label: "Profile", icon: "👤" },
 ];
@@ -18,9 +19,13 @@ const LINKS = [
 export default function Navbar() {
   const user = useSelector((s) => s.user);
   const requests = useSelector((s) => s.requests);
+  const unread = useSelector((s) => s.chat.unread);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const count = requests?.length || 0;
+  const requestCount = requests?.length || 0;
+  const unreadCount = Object.values(unread).reduce((a, b) => a + b, 0);
+
+  const countFor = (to) => (to === "/requests" ? requestCount : to === "/chat" ? unreadCount : 0);
 
   // keep the Requests badge fresh (every 60s, only while the tab is visible)
   useEffect(() => {
@@ -41,7 +46,7 @@ export default function Navbar() {
     try {
       await api.post("/logout");
     } finally {
-      dispatch(removeUser());
+      dispatch(removeUser()); // Body disconnects the socket and clears chat state
       dispatch(clearFeed());
       dispatch(clearConnections());
       dispatch(clearRequests());
@@ -74,8 +79,8 @@ export default function Navbar() {
                   }
                 >
                   {l.label}
-                  {l.to === "/requests" && count > 0 && (
-                    <span className="badge badge-primary badge-sm">{count}</span>
+                  {countFor(l.to) > 0 && (
+                    <span className="badge badge-primary badge-sm">{countFor(l.to)}</span>
                   )}
                 </NavLink>
               ))}
@@ -103,8 +108,10 @@ export default function Navbar() {
             >
               <span className="indicator text-xl">
                 {l.icon}
-                {l.to === "/requests" && count > 0 && (
-                  <span className="indicator-item badge badge-primary badge-xs">{count}</span>
+                {countFor(l.to) > 0 && (
+                  <span className="indicator-item badge badge-primary badge-xs">
+                    {countFor(l.to)}
+                  </span>
                 )}
               </span>
               <span className="dock-label">{l.label}</span>

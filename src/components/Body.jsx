@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../utils/api";
 import { addUser } from "../utils/userSlice";
+import { connectSocket, disconnectSocket } from "../utils/socket";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import Toast from "./Toast";
@@ -13,6 +14,7 @@ export default function Body() {
   const location = useLocation();
   const user = useSelector((s) => s.user);
   const isLogin = location.pathname === "/login";
+  const isChat = location.pathname.startsWith("/chat");
 
   useEffect(() => {
     if (user) return;
@@ -24,6 +26,11 @@ export default function Body() {
       });
   }, []);
 
+  useEffect(() => {
+    if (user?._id) connectSocket();
+    else disconnectSocket();
+  }, [user?._id]);
+
   if (isLogin) {
     return (
       <div
@@ -31,6 +38,7 @@ export default function Body() {
         style={{ backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" }}
       >
         <Outlet />
+        <Toast />
       </div>
     );
   }
@@ -41,7 +49,7 @@ export default function Body() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer />
+      {!isChat && <Footer />}
       <Toast />
       <div className="h-16 md:hidden" />
     </div>
