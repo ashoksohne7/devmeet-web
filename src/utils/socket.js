@@ -1,7 +1,16 @@
 import { io } from "socket.io-client";
 import { api } from "./api";
 import appStore from "./appStore";
-import { setConnected, setOnlineList, setPresence, addUnread, resetChat } from "./chatSlice";
+import {
+  setConnected,
+  setOnlineList,
+  setPresence,
+  addUnread,
+  resetChat,
+  setLast,
+  setLastMap,
+  setUnreadMap,
+} from "./chatSlice";
 
 // Vercel rewrites cannot carry WebSockets, so the socket talks to the API directly.
 const SOCKET_URL =
@@ -23,6 +32,24 @@ export const setActiveChat = (id) => {
   activeChat = id;
 };
 
+// tell the server that everything from this person has been read
+export const markRead = (peerId) => api.post(`/chat/${peerId}/read`).catch(() => {});
+
+// last message and unread count of every chat (survives refresh)
+export function loadChatSummary() {
+  return api
+    .get("/chat/summary")
+    .then((r) => {
+      const dispatch = appStore.dispatch;
+      dispatch(setLastMap(r.data.data || []));
+      const unread = { ...(r.data.unread || {}) };
+      // the chat that is open right now is being read
+      if (activeChat && !document.hidden) delete unread[activeChat];
+      dispatch(setUnreadMap(unread));
+    })
+    .catch(() => {});
+}
+
 export function connectSocket() {
   if (socket) return;
   const dispatch = appStore.dispatch;
@@ -41,6 +68,7 @@ export function connectSocket() {
   socket.on("connect", () => {
     dispatch(setConnected(true));
     socket.emit("presence:get", (ids) => dispatch(setOnlineList(Array.isArray(ids) ? ids : [])));
+    loadChatSummary(); // also catches messages received while we were offline
   });
   socket.on("disconnect", () => dispatch(setConnected(false)));
   socket.on("connect_error", () => {
@@ -51,7 +79,15 @@ export function connectSocket() {
   socket.on("presence:update", (p) => dispatch(setPresence(p)));
   socket.on("message:new", (m) => {
     const me = appStore.getState().user?._id;
-    if (m.fromUserId !== me && m.fromUserId !== activeChat) dispatch(addUnread(m.fromUserId));
+    const mine = m.fromUserId === me;
+    const other = mine ? m.toUserId : m.fromUserId;
+
+    // moves this conversation to the top of the list
+    dispatch(setLast({ userId: other, text: m.text, createdAt: m.createdAt, fromMe: mine }));
+
+    // it only counts as read if this chat is open AND the tab is visible
+    const viewing = m.fromUserId === activeChat && !document.hidden;
+    if (!mine && !viewing) dispatch(addUnread(m.fromUserId));
     fire("message:new", m);
   });
   socket.on("typing", (d) => fire("typing", d));

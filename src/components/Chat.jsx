@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { api, getError } from "../utils/api";
 import { addConnections } from "../utils/connectionsSlice";
 import { clearUnread } from "../utils/chatSlice";
-import { sendMessage, sendTyping, setActiveChat, subscribe } from "../utils/socket";
+import { loadChatSummary, markRead, sendMessage, sendTyping, setActiveChat, subscribe } from "../utils/socket";
 import Avatar from "./Avatar";
 
 const byTime = (a, b) =>
@@ -53,7 +53,19 @@ function Conversation({ peer, me, onBack }) {
   useEffect(() => {
     setActiveChat(peer._id);
     dispatch(clearUnread(peer._id));
-    return () => setActiveChat(null);
+    markRead(peer._id);
+    // coming back to this tab counts as reading
+    const onVisible = () => {
+      if (!document.hidden) {
+        dispatch(clearUnread(peer._id));
+        markRead(peer._id);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      setActiveChat(null);
+    };
   }, [peer._id]);
 
   // history
@@ -79,7 +91,10 @@ function Conversation({ peer, me, onBack }) {
     const offMsg = subscribe("message:new", (m) => {
       if (m.fromUserId !== peer._id && m.toUserId !== peer._id) return;
       setMessages((prev) => merge(prev, [m]));
-      if (m.fromUserId === peer._id) setTyping(false);
+      if (m.fromUserId === peer._id) {
+        setTyping(false);
+        if (!document.hidden) markRead(peer._id);
+      }
     });
     const offTyping = subscribe("typing", (d) => {
       if (d.from !== peer._id) return;
@@ -254,6 +269,13 @@ function Conversation({ peer, me, onBack }) {
   );
 }
 
+const shortTime = (d) => {
+  const date = new Date(d);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString([], { day: "numeric", month: "short" });
+};
+
 export default function Chat() {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -262,6 +284,7 @@ export default function Chat() {
   const connections = useSelector((s) => s.connections);
   const online = useSelector((s) => s.chat.online);
   const unread = useSelector((s) => s.chat.unread);
+  const last = useSelector((s) => s.chat.last);
   const [listError, setListError] = useState("");
 
   useEffect(() => {
@@ -271,6 +294,23 @@ export default function Chat() {
       .then((res) => dispatch(addConnections(res.data.data)))
       .catch((err) => setListError(getError(err)));
   }, [me]);
+
+  useEffect(() => {
+    if (me) loadChatSummary();
+  }, [me?._id]);
+
+  // most recent conversation first; chats without messages keep their order at the bottom
+  const sorted = useMemo(() => {
+    if (!connections) return null;
+    return connections
+      .map((c, i) => ({
+        c,
+        i,
+        t: last[c._id] ? new Date(last[c._id].createdAt).getTime() : 0,
+      }))
+      .sort((a, b) => b.t - a.t || a.i - b.i)
+      .map((x) => x.c);
+  }, [connections, last]);
 
   if (!me) return null;
 
@@ -298,33 +338,50 @@ export default function Chat() {
               </Link>
             </div>
           )}
-          {connections?.map((c) => (
-            <Link
-              key={c._id}
-              to={`/chat/${c._id}`}
-              className={`flex items-center gap-3 px-4 py-3 hover:bg-base-200 ${
-                c._id === userId ? "bg-base-200" : ""
-              }`}
-            >
-              <div className="relative">
-                <Avatar user={c} size="h-12 w-12" />
-                {online[c._id] && (
-                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-base-100 bg-emerald-500" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">
-                  {c.firstName} {c.lastName}
-                </p>
-                <p className="truncate text-xs opacity-60">
-                  {online[c._id] ? "Online" : "Offline"}
-                </p>
-              </div>
-              {unread[c._id] > 0 && (
-                <span className="badge badge-primary badge-sm">{unread[c._id]}</span>
-              )}
-            </Link>
-          ))}
+          {sorted?.map((c) => {
+            const l = last[c._id];
+            const n = unread[c._id] || 0;
+            return (
+              <Link
+                key={c._id}
+                to={`/chat/${c._id}`}
+                className={`flex items-center gap-3 px-4 py-3 hover:bg-base-200 ${
+                  c._id === userId ? "bg-base-200" : ""
+                }`}
+              >
+                <div className="relative">
+                  <Avatar user={c} size="h-12 w-12" />
+                  {online[c._id] && (
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-base-100 bg-emerald-500" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className={`truncate ${n > 0 ? "font-bold" : "font-semibold"}`}>
+                      {c.firstName} {c.lastName}
+                    </p>
+                    {l && (
+                      <span className="shrink-0 text-[11px] opacity-50">
+                        {shortTime(l.createdAt)}
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className={`truncate text-xs ${
+                      n > 0 ? "font-semibold opacity-90" : "opacity-60"
+                    }`}
+                  >
+                    {l
+                      ? `${l.fromMe ? "You: " : ""}${l.text}`
+                      : online[c._id]
+                      ? "Online"
+                      : "No messages yet"}
+                  </p>
+                </div>
+                {n > 0 && <span className="badge badge-primary badge-sm">{n}</span>}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
