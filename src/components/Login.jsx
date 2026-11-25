@@ -78,12 +78,12 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
-      <h1 className="text-5xl font-extrabold text-white drop-shadow">🔥 devmeet</h1>
-      <p className="mb-6 mt-2 text-white/90">Connect with developers who share your stack.</p>
+      <h1 className="font-mono text-4xl font-bold sm:text-5xl"><span className="text-primary">&lt;</span>devmeet<span className="text-primary"> /&gt;</span><span className="caret ml-1 text-secondary">_</span></h1>
+      <p className="mb-6 mt-3 font-mono text-sm text-base-content/60">{"// connect with developers who share your stack"}</p>
 
-      <form onSubmit={submit} noValidate className="card w-full max-w-sm bg-base-100 shadow-2xl">
+      <form onSubmit={submit} noValidate className="card w-full max-w-sm border border-base-300 bg-base-100 shadow-2xl">
         <div className="card-body gap-3">
-          <h2 className="card-title justify-center">
+          <h2 className="card-title font-mono text-base">
             {isLogin ? "Welcome back" : "Create your account"}
           </h2>
 
@@ -116,7 +116,7 @@ export default function Login() {
           )}
           {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
-          <button type="submit" className="btn btn-primary rounded-full" disabled={loading}>
+          <button type="submit" className="btn btn-primary rounded-lg" disabled={loading}>
             {loading ? "Please wait…" : isLogin ? "Log in" : "Create account"}
           </button>
           {loading && (

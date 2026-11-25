@@ -34,8 +34,7 @@ export default function Body() {
   if (isLogin) {
     return (
       <div
-        className="min-h-screen"
-        style={{ backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" }}
+        className="dev-grid min-h-screen"
       >
         <Outlet />
         <Toast />

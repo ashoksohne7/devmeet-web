@@ -195,7 +195,7 @@ export default function Profile() {
 
           {error && <p role="alert" className="text-sm text-error">{error}</p>}
 
-          <button className="btn btn-primary rounded-full" onClick={save}
+          <button className="btn btn-primary rounded-lg" onClick={save}
             disabled={loading || uploading || !dirty}>
             {loading ? "Saving…" : "Save changes"}
           </button>

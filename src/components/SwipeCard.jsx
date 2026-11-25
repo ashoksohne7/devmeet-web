@@ -17,14 +17,15 @@ export default function SwipeCard({
 }) {
   const { firstName = "", lastName = "", age, gender, about, skills = [] } = user;
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
-  const gesture = useRef(null); // always holds the latest pointer data
+  const gesture = useRef(null);
   const isTop = depth === 0;
   const interactive = isTop && !preview;
 
   const mine = new Set((mySkills || []).map((s) => s.toLowerCase()));
   const common = skills.filter((s) => mine.has(s.toLowerCase()));
+  const pct = skills.length ? Math.round((common.length / skills.length) * 100) : 0;
+  const showMatch = !preview && mine.size > 0 && skills.length > 0;
 
-  // if a swipe fails and the card comes back, reset it
   useEffect(() => {
     if (!leaving) {
       gesture.current = null;
@@ -112,7 +113,7 @@ export default function SwipeCard({
       onPointerMove={interactive ? onMove : undefined}
       onPointerUp={interactive ? (e) => finish(e, false) : undefined}
       onPointerCancel={interactive ? (e) => finish(e, true) : undefined}
-      className="absolute inset-0 select-none overflow-hidden rounded-3xl bg-base-300 shadow-2xl"
+      className="absolute inset-0 select-none overflow-hidden rounded-3xl bg-base-300 shadow-2xl ring-1 ring-white/10"
       style={{
         transform,
         transition,
@@ -128,32 +129,36 @@ export default function SwipeCard({
       {!preview && (
         <>
           <div
-            className="absolute left-5 top-8 -rotate-12 rounded-lg border-4 border-emerald-400 px-3 py-1 text-3xl font-extrabold tracking-wider text-emerald-400"
+            className="absolute left-5 top-8 -rotate-12 rounded-md border-4 border-emerald-400 px-3 py-1 font-mono text-2xl font-extrabold tracking-widest text-emerald-400"
             style={{ opacity: likeOpacity }}
           >
-            LIKE
+            MERGE
           </div>
           <div
-            className="absolute right-5 top-8 rotate-12 rounded-lg border-4 border-rose-500 px-3 py-1 text-3xl font-extrabold tracking-wider text-rose-500"
+            className="absolute right-5 top-8 rotate-12 rounded-md border-4 border-rose-400 px-3 py-1 font-mono text-2xl font-extrabold tracking-widest text-rose-400"
             style={{ opacity: nopeOpacity }}
           >
-            NOPE
+            SKIP
           </div>
         </>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-5 pr-16 pt-28 text-white">
-        {common.length > 0 && (
-          <span
-            className="mb-2 inline-block rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" }}
-          >
-            🤝 {common.length} shared skill{common.length > 1 ? "s" : ""}
-          </span>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-5 pr-16 pt-28 text-white">
+        {showMatch && (
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] text-white/80">
+            <span>stack match</span>
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/20">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${pct}%`, backgroundImage: "var(--accent-grad)" }}
+              />
+            </div>
+            <span className="font-bold text-white">{pct}%</span>
+          </div>
         )}
         <h2 className="break-words text-3xl font-bold leading-tight">
           {firstName || "Your name"} {lastName}
-          {age ? <span className="ml-2 text-2xl font-normal">{age}</span> : null}
+          {age ? <span className="ml-2 font-mono text-2xl font-normal text-white/80">{age}</span> : null}
         </h2>
         {gender && <p className="text-sm capitalize text-white/70">{gender}</p>}
         {about && <p className="mt-2 line-clamp-2 break-words text-sm text-white/90">{about}</p>}
@@ -162,8 +167,8 @@ export default function SwipeCard({
             {skills.slice(0, 5).map((s) => (
               <span
                 key={s}
-                className={`rounded-full px-3 py-1 text-xs backdrop-blur ${
-                  mine.has(s.toLowerCase()) ? "bg-pink-500/80 font-semibold" : "bg-white/20"
+                className={`rounded-md px-2.5 py-1 font-mono text-xs backdrop-blur ${
+                  mine.has(s.toLowerCase()) ? "bg-indigo-500/90 font-semibold" : "bg-white/15"
                 }`}
               >
                 {s}

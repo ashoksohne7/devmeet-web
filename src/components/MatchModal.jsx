@@ -33,12 +33,13 @@ export default function MatchModal({ me, other, onKeep, onView }) {
       ))}
 
       <div className="relative text-center" style={{ animation: "pop-in 350ms ease-out" }}>
-        <h2 className="bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-5xl font-extrabold text-transparent">
+        <h2 className="bg-gradient-to-r from-sky-300 to-violet-400 bg-clip-text text-5xl font-extrabold text-transparent">
           It&apos;s a match!
         </h2>
         <p className="mt-2 text-white/70">
           You and {other?.firstName} are now connected
         </p>
+        <p className="mt-3 font-mono text-sm text-emerald-300">$ git merge {other?.firstName?.toLowerCase()}: no conflicts</p>
 
         <div className="my-8 flex items-center justify-center">
           <div className="-rotate-6 rounded-full border-4 border-white/90">

@@ -231,7 +231,7 @@ function Conversation({ peer, me, onBack }) {
                       ? "rounded-br-md text-white"
                       : "rounded-bl-md border border-base-300 bg-base-100"
                   }`}
-                  style={mine ? { backgroundImage: "linear-gradient(135deg, #fd267a, #ff6036)" } : undefined}
+                  style={mine ? { backgroundImage: "var(--accent-grad)" } : undefined}
                 >
                   {m.text}
                   <span className={`ml-2 text-[10px] ${mine ? "text-white/70" : "opacity-50"}`}>
@@ -255,11 +255,11 @@ function Conversation({ peer, me, onBack }) {
           maxLength={1000}
           autoComplete="off"
           placeholder="Type a message"
-          className="input input-bordered flex-1 rounded-full"
+          className="input input-bordered flex-1"
         />
         <button
           type="submit"
-          className="btn btn-primary rounded-full"
+          className="btn btn-primary rounded-lg"
           disabled={sending || !text.trim() || !connected}
         >
           Send
@@ -333,7 +333,7 @@ export default function Chat() {
           {connections?.length === 0 && (
             <div className="p-6 text-center text-sm opacity-70">
               <p>You have no connections yet.</p>
-              <Link to="/" className="btn btn-primary btn-sm mt-3 rounded-full">
+              <Link to="/" className="btn btn-primary btn-sm mt-3 rounded-lg">
                 Find developers
               </Link>
             </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { GitMerge, X } from "lucide-react";
 import { api, getError } from "../utils/api";
 import { addFeed, removeFromFeed } from "../utils/feedSlice";
 import SwipeCard from "./SwipeCard";
@@ -17,9 +18,8 @@ export default function Feed() {
   const feedRef = useRef(feed);
   feedRef.current = feed;
   const fetching = useRef(false);
-  const swiped = useRef(new Set()); // ids swiped in this session
+  const swiped = useRef(new Set());
 
-  // merge=true keeps current cards and appends new ones (no duplicates)
   const loadFeed = async (merge = false) => {
     if (fetching.current) return;
     fetching.current = true;
@@ -46,7 +46,6 @@ export default function Feed() {
     if (user && !feed) loadFeed(false);
   }, [user]);
 
-  // top up quietly when only a few cards are left
   useEffect(() => {
     if (user && feed && feed.length <= 3) loadFeed(true);
   }, [feed?.length]);
@@ -63,7 +62,6 @@ export default function Feed() {
       } catch (err) {
         const msg = getError(err);
         if (!/already exists/i.test(msg)) {
-          // request failed: bring the card back
           swiped.current.delete(target._id);
           setError(msg);
           setLeaving(null);
@@ -97,9 +95,13 @@ export default function Feed() {
   const loadingCards = !feed || (feed.length === 0 && !exhausted && !error);
 
   return (
-    <div className="flex flex-col items-center gap-6 px-4 py-6">
+    <div className="feed-glow flex min-h-[calc(100dvh-4rem)] flex-col items-center gap-5 px-4 py-6">
+      <p className="font-mono text-xs text-base-content/50">
+        <span className="text-secondary">$</span> ls ./developers
+      </p>
+
       {error && (
-        <div role="alert" className="alert alert-error w-full max-w-sm py-2 text-sm text-white">
+        <div role="alert" className="alert alert-error w-full max-w-sm py-2 text-sm">
           <span>{error}</span>
           {(!feed || feed.length === 0) && (
             <button className="btn btn-sm btn-ghost" onClick={() => loadFeed(false)}>
@@ -109,23 +111,36 @@ export default function Feed() {
         </div>
       )}
 
-      {loadingCards && <span className="loading loading-spinner loading-lg mt-20 text-primary" />}
+      {loadingCards && (
+        <p className="mt-20 font-mono text-sm text-base-content/70">
+          <span className="text-secondary">$</span> git fetch developers
+          <span className="caret">_</span>
+        </p>
+      )}
 
       {feed && feed.length === 0 && exhausted && (
-        <div className="mt-16 text-center">
-          <p className="text-lg font-semibold">You are all caught up</p>
-          <p className="mt-1 text-sm opacity-60">
-            There are no more developers to show right now. Check back soon.
-          </p>
-          <button className="btn btn-primary mt-5 rounded-full" onClick={() => loadFeed(false)}>
-            Refresh
-          </button>
+        <div className="mt-10 w-full max-w-sm overflow-hidden rounded-xl border border-base-300 bg-base-100 font-mono text-sm shadow-xl">
+          <div className="border-b border-base-300 bg-base-300/60 px-4 py-2 text-xs opacity-70">
+            terminal
+          </div>
+          <div className="space-y-1 p-4">
+            <p>
+              <span className="text-secondary">$</span> git pull
+            </p>
+            <p className="text-success">Already up to date.</p>
+            <p className="pt-1 opacity-60">{"// no more developers in the queue"}</p>
+          </div>
+          <div className="px-4 pb-4">
+            <button className="btn btn-primary btn-sm" onClick={() => loadFeed(false)}>
+              Refresh
+            </button>
+          </div>
         </div>
       )}
 
       {stack.length > 0 && (
         <>
-          <div className="relative w-full max-w-sm" style={{ height: "min(68vh, 34rem)" }}>
+          <div className="relative w-full max-w-sm" style={{ height: "min(66vh, 34rem)" }}>
             {[...stack].reverse().map((u) => (
               <SwipeCard
                 key={u._id}
@@ -139,25 +154,26 @@ export default function Feed() {
             ))}
           </div>
 
-          <div className="flex items-center gap-8">
-            <button
-              aria-label="Pass"
-              className="btn btn-circle btn-lg h-16 w-16 border-0 bg-white text-2xl text-rose-500 shadow-lg hover:scale-110 hover:bg-white"
-              onClick={() => swipe("left")}
-            >
-              ✕
-            </button>
-            <button
-              aria-label="Like"
-              className="btn btn-circle btn-lg h-16 w-16 border-0 bg-white text-2xl text-emerald-500 shadow-lg hover:scale-110 hover:bg-white"
-              onClick={() => swipe("right")}
-            >
-              ♥
-            </button>
+          <div className="flex items-start gap-12">
+            <div className="flex flex-col items-center gap-1">
+              <button aria-label="Skip" className="act-btn text-rose-400" onClick={() => swipe("left")}>
+                <X size={28} strokeWidth={2.5} />
+              </button>
+              <span className="font-mono text-[11px] text-base-content/50">skip</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <button aria-label="Merge" className="act-btn text-emerald-400" onClick={() => swipe("right")}>
+                <GitMerge size={28} strokeWidth={2.25} />
+              </button>
+              <span className="font-mono text-[11px] text-base-content/50">merge</span>
+            </div>
           </div>
-          <p className="text-xs opacity-50">
-            Tap a card for details · Drag, flick or use the ← → keys to swipe
-          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 font-mono text-xs text-base-content/50">
+            <span><kbd className="kbd kbd-sm">←</kbd> skip</span>
+            <span><kbd className="kbd kbd-sm">→</kbd> merge</span>
+            <span><kbd className="kbd kbd-sm">tap</kbd> details</span>
+          </div>
         </>
       )}
 

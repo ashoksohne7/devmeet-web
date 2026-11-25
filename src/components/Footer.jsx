@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
         <div>
           <p className="text-xl font-extrabold">
-            🔥 <span className="brand-text">devmeet</span>
+            <span className="font-mono font-bold"><span className="text-primary">&lt;</span>devmeet<span className="text-primary"> /&gt;</span></span>
           </p>
           <p className="mt-1 text-sm text-base-content/60">
             Where developers meet developers.

@@ -6,14 +6,15 @@ import { removeUser } from "../utils/userSlice";
 import { clearFeed } from "../utils/feedSlice";
 import { clearConnections } from "../utils/connectionsSlice";
 import { addRequests, clearRequests } from "../utils/requestsSlice";
+import { Flame, Inbox, MessageSquare, Users, User } from "lucide-react";
 import Avatar from "./Avatar";
 
 const LINKS = [
-  { to: "/", label: "Feed", icon: "🔥", end: true },
-  { to: "/requests", label: "Requests", icon: "💌" },
-  { to: "/chat", label: "Chat", icon: "💬" },
-  { to: "/connections", label: "Connections", icon: "🤝" },
-  { to: "/profile", label: "Profile", icon: "👤" },
+  { to: "/", label: "Feed", Icon: Flame, end: true },
+  { to: "/requests", label: "Requests", Icon: Inbox },
+  { to: "/chat", label: "Chat", Icon: MessageSquare },
+  { to: "/connections", label: "Connections", Icon: Users },
+  { to: "/profile", label: "Profile", Icon: User },
 ];
 
 export default function Navbar() {
@@ -59,8 +60,7 @@ export default function Navbar() {
       <div className="navbar sticky top-0 z-30 border-b border-base-300 bg-base-100/95 backdrop-blur">
         <div className="flex-1">
           <Link to="/" className="flex items-center gap-1 px-3 text-2xl font-extrabold">
-            <span>🔥</span>
-            <span className="brand-text">devmeet</span>
+            <span className="font-mono font-bold"><span className="text-primary">&lt;</span>devmeet<span className="text-primary"> /&gt;</span></span>
           </Link>
         </div>
 
@@ -107,7 +107,7 @@ export default function Navbar() {
               }
             >
               <span className="indicator text-xl">
-                {l.icon}
+                <l.Icon size={20} strokeWidth={1.75} />
                 {countFor(l.to) > 0 && (
                   <span className="indicator-item badge badge-primary badge-xs">
                     {countFor(l.to)}
