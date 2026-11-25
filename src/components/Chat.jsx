@@ -4,7 +4,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { api, getError } from "../utils/api";
 import { addConnections } from "../utils/connectionsSlice";
 import { clearUnread } from "../utils/chatSlice";
-import { loadChatSummary, markRead, sendMessage, sendTyping, setActiveChat, subscribe } from "../utils/socket";
+import {
+  loadChatSummary,
+  markRead,
+  sendMessage,
+  sendTyping,
+  setActiveChat,
+  subscribe,
+} from "../utils/socket";
 import Avatar from "./Avatar";
 
 const byTime = (a, b) =>
@@ -40,14 +47,15 @@ function Conversation({ peer, me, onBack }) {
   const [hasMore, setHasMore] = useState(false);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
-  const [sending, setSending] = useState(false);
 
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const stick = useRef(true);
   const anchor = useRef(null);
   const typingTimer = useRef(null);
   const stopTimer = useRef(null);
   const lastTyping = useRef(0);
+  const pending = useRef(new Set()); // temporary ids still waiting for the server echo
 
   // mark this chat as the one being read
   useEffect(() => {
@@ -90,11 +98,23 @@ function Conversation({ peer, me, onBack }) {
   useEffect(() => {
     const offMsg = subscribe("message:new", (m) => {
       if (m.fromUserId !== peer._id && m.toUserId !== peer._id) return;
-      setMessages((prev) => merge(prev, [m]));
+      setMessages((prev) => {
+        // the real message replaces our temporary bubble
+        const base = m.clientId ? prev.filter((x) => x._id !== `tmp-${m.clientId}`) : prev;
+        return merge(base, [m]);
+      });
+      if (m.clientId) pending.current.delete(`tmp-${m.clientId}`);
       if (m.fromUserId === peer._id) {
         setTyping(false);
-        if (!document.hidden) markRead(peer._id);
+        // short delay so the server has finished saving it before we mark it read
+        setTimeout(() => {
+          if (!document.hidden) markRead(peer._id);
+        }, 1000);
       }
+    });
+    const offFail = subscribe("message:failed", (d) => {
+      setMessages((prev) => prev.filter((x) => x._id !== d._id));
+      if (d.notice) setError("A message could not be delivered. Please try again.");
     });
     const offTyping = subscribe("typing", (d) => {
       if (d.from !== peer._id) return;
@@ -104,6 +124,7 @@ function Conversation({ peer, me, onBack }) {
     });
     return () => {
       offMsg();
+      offFail();
       offTyping();
       clearTimeout(typingTimer.current);
       clearTimeout(stopTimer.current);
@@ -128,7 +149,7 @@ function Conversation({ peer, me, onBack }) {
   };
 
   const loadEarlier = async () => {
-    const first = messages[0];
+    const first = messages.find((m) => !m.pending);
     const el = listRef.current;
     if (!first || !el) return;
     anchor.current = el.scrollHeight - el.scrollTop;
@@ -162,19 +183,40 @@ function Conversation({ peer, me, onBack }) {
   const send = async (e) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t || sending) return;
-    setSending(true);
+    if (!t || !connected) return;
+
+    // show the message immediately, the server confirms it a moment later
+    const clientId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const tempId = `tmp-${clientId}`;
+    const temp = {
+      _id: tempId,
+      clientId,
+      fromUserId: me._id,
+      toUserId: peer._id,
+      text: t,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    };
+
+    pending.current.add(tempId);
     setError("");
+    setText("");
+    stick.current = true;
+    setMessages((prev) => merge(prev, [temp]));
+    clearTimeout(stopTimer.current);
+    lastTyping.current = 0;
+    sendTyping(peer._id, false);
+    inputRef.current?.focus();
+
     try {
-      await sendMessage(peer._id, t);
-      setText("");
-      stick.current = true;
-      clearTimeout(stopTimer.current);
-      sendTyping(peer._id, false);
+      await sendMessage(peer._id, t, clientId);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setSending(false);
+      // roll back only if the server echo has not already replaced the temporary bubble
+      if (pending.current.delete(tempId)) {
+        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+        setText((cur) => cur || t);
+        setError(err.message);
+      }
     }
   };
 
@@ -189,8 +231,8 @@ function Conversation({ peer, me, onBack }) {
           <p className="truncate font-semibold">
             {peer.firstName} {peer.lastName}
           </p>
-          <p className={`text-xs ${isOnline ? "text-emerald-600" : "opacity-60"}`}>
-            {typing ? "typing…" : isOnline ? "Online" : "Offline"}
+          <p className={`font-mono text-xs ${isOnline ? "text-emerald-400" : "opacity-60"}`}>
+            {typing ? "typing…" : isOnline ? "● online" : "○ offline"}
           </p>
         </div>
       </div>
@@ -229,13 +271,13 @@ function Conversation({ peer, me, onBack }) {
                   className={`max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
                     mine
                       ? "rounded-br-md text-white"
-                      : "rounded-bl-md border border-base-300 bg-base-100"
-                  }`}
+                      : "rounded-bl-md border border-base-300 bg-base-200"
+                  } ${m.pending ? "opacity-70" : ""}`}
                   style={mine ? { backgroundImage: "var(--accent-grad)" } : undefined}
                 >
                   {m.text}
                   <span className={`ml-2 text-[10px] ${mine ? "text-white/70" : "opacity-50"}`}>
-                    {timeOf(m.createdAt)}
+                    {m.pending ? "sending…" : timeOf(m.createdAt)}
                   </span>
                 </div>
               </div>
@@ -250,6 +292,7 @@ function Conversation({ peer, me, onBack }) {
 
       <form onSubmit={send} className="flex items-center gap-2 border-t border-base-300 p-3">
         <input
+          ref={inputRef}
           value={text}
           onChange={onType}
           maxLength={1000}
@@ -257,11 +300,7 @@ function Conversation({ peer, me, onBack }) {
           placeholder="Type a message"
           className="input input-bordered flex-1"
         />
-        <button
-          type="submit"
-          className="btn btn-primary rounded-lg"
-          disabled={sending || !text.trim() || !connected}
-        >
+        <button type="submit" className="btn btn-primary" disabled={!text.trim() || !connected}>
           Send
         </button>
       </form>
@@ -333,7 +372,7 @@ export default function Chat() {
           {connections?.length === 0 && (
             <div className="p-6 text-center text-sm opacity-70">
               <p>You have no connections yet.</p>
-              <Link to="/" className="btn btn-primary btn-sm mt-3 rounded-lg">
+              <Link to="/" className="btn btn-primary btn-sm mt-3">
                 Find developers
               </Link>
             </div>
@@ -352,7 +391,7 @@ export default function Chat() {
                 <div className="relative">
                   <Avatar user={c} size="h-12 w-12" />
                   {online[c._id] && (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-base-100 bg-emerald-500" />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-base-100 bg-emerald-400" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">

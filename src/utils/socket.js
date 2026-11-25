@@ -19,6 +19,8 @@ const SOCKET_URL =
 
 let socket = null;
 let activeChat = null;
+let presenceTimer = null;
+let cleanups = [];
 const listeners = new Map();
 
 export const subscribe = (event, fn) => {
@@ -50,6 +52,14 @@ export function loadChatSummary() {
     .catch(() => {});
 }
 
+// ask the server who is online right now
+export function refreshPresence() {
+  if (!socket?.connected) return;
+  socket.emit("presence:get", (ids) =>
+    appStore.dispatch(setOnlineList(Array.isArray(ids) ? ids : []))
+  );
+}
+
 export function connectSocket() {
   if (socket) return;
   const dispatch = appStore.dispatch;
@@ -63,11 +73,13 @@ export function connectSocket() {
         .catch(() => cb({ token: "" }));
     },
     transports: ["websocket", "polling"],
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 3000,
   });
 
   socket.on("connect", () => {
     dispatch(setConnected(true));
-    socket.emit("presence:get", (ids) => dispatch(setOnlineList(Array.isArray(ids) ? ids : [])));
+    refreshPresence();
     loadChatSummary(); // also catches messages received while we were offline
   });
   socket.on("disconnect", () => dispatch(setConnected(false)));
@@ -90,11 +102,33 @@ export function connectSocket() {
     if (!mine && !viewing) dispatch(addUnread(m.fromUserId));
     fire("message:new", m);
   });
+  socket.on("message:failed", (d) => {
+    fire("message:failed", d);
+    loadChatSummary(); // put the list preview and unread counts back in sync
+  });
   socket.on("typing", (d) => fire("typing", d));
+
+  // keep the online dots fresh even if a live event was missed
+  presenceTimer = setInterval(() => {
+    if (!document.hidden) refreshPresence();
+  }, 30000);
+  const onVisible = () => {
+    if (!document.hidden) refreshPresence();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("focus", refreshPresence);
+  cleanups = [
+    () => document.removeEventListener("visibilitychange", onVisible),
+    () => window.removeEventListener("focus", refreshPresence),
+  ];
 }
 
 export function disconnectSocket() {
   if (!socket) return;
+  clearInterval(presenceTimer);
+  presenceTimer = null;
+  cleanups.forEach((fn) => fn());
+  cleanups = [];
   socket.removeAllListeners();
   socket.disconnect();
   socket = null;
@@ -102,10 +136,10 @@ export function disconnectSocket() {
   appStore.dispatch(resetChat());
 }
 
-export function sendMessage(to, text) {
+export function sendMessage(to, text, clientId) {
   return new Promise((resolve, reject) => {
     if (!socket?.connected) return reject(new Error("You are offline. Reconnecting…"));
-    socket.timeout(8000).emit("message:send", { to, text }, (err, res) => {
+    socket.timeout(8000).emit("message:send", { to, text, clientId }, (err, res) => {
       if (err) return reject(new Error("The server did not respond. Please try again."));
       if (!res?.ok) return reject(new Error(res?.error || "Message could not be sent."));
       resolve();

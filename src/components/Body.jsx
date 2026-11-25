@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { api } from "../utils/api";
 import { addUser } from "../utils/userSlice";
-import { connectSocket, disconnectSocket } from "../utils/socket";
+import { connectSocket, disconnectSocket, refreshPresence } from "../utils/socket";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import Toast from "./Toast";
@@ -31,11 +31,14 @@ export default function Body() {
     else disconnectSocket();
   }, [user?._id]);
 
+  // opening a page or a chat refreshes who is online
+  useEffect(() => {
+    if (user?._id) refreshPresence();
+  }, [location.pathname]);
+
   if (isLogin) {
     return (
-      <div
-        className="dev-grid min-h-screen"
-      >
+      <div className="dev-grid min-h-screen">
         <Outlet />
         <Toast />
       </div>
